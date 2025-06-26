@@ -7,7 +7,8 @@ import { addSampleData } from "./utils/sampleData";
 import "./App.css";
 
 function App() {
-  const { scores, addScore } = useScoreStore();
+  const { getScores, addScore, demoMode, setDemoMode } = useScoreStore();
+  const scores = getScores();
   const [activeTab, setActiveTab] = useState<"chart" | "list" | "stats">(
     "chart"
   );
@@ -21,11 +22,25 @@ function App() {
     }
   };
 
+  const handleDemoModeToggle = () => {
+    setDemoMode(!demoMode);
+  };
+
   return (
     <div className="app">
       <header className="app-header">
         <h1>🍣 寿司打スコア管理システム</h1>
         <div className="header-controls">
+          <div className="demo-mode-toggle">
+            <label htmlFor="demoMode">デモモード:</label>
+            <input
+              type="checkbox"
+              id="demoMode"
+              checked={demoMode}
+              onChange={handleDemoModeToggle}
+            />
+            <span className="toggle-label">{demoMode ? "ON" : "OFF"}</span>
+          </div>
           <div className="course-filter">
             <label htmlFor="courseFilter">コースフィルタ:</label>
             <select
@@ -41,7 +56,7 @@ function App() {
               ))}
             </select>
           </div>
-          {scores.length === 0 && (
+          {!demoMode && scores.length === 0 && (
             <button className="sample-data-btn" onClick={handleAddSampleData}>
               📊 サンプルデータを追加
             </button>
@@ -81,7 +96,10 @@ function App() {
       </main>
 
       <footer className="app-footer">
-        <p>Total Games: {scores.length}</p>
+        <p>
+          Total Games: {scores.length}
+          {demoMode && <span className="demo-indicator"> (デモモード)</span>}
+        </p>
       </footer>
     </div>
   );

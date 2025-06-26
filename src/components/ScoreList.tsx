@@ -4,7 +4,8 @@ import { ScoreForm } from "./ScoreForm";
 import type { GameScore } from "../types";
 
 export const ScoreList: React.FC = () => {
-  const { scores, deleteScore } = useScoreStore();
+  const { getScores, deleteScore, demoMode } = useScoreStore();
+  const scores = getScores();
   const [editingScore, setEditingScore] = useState<GameScore | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [sortBy, setSortBy] = useState<"date" | "course" | "result">("date");
@@ -94,7 +95,11 @@ export const ScoreList: React.FC = () => {
     <div className="score-list-container">
       <div className="list-header">
         <h3>スコア一覧</h3>
-        <button className="add-btn" onClick={() => setShowForm(true)}>
+        <button 
+          className="add-btn" 
+          onClick={() => setShowForm(true)}
+          disabled={demoMode}
+        >
           新規追加
         </button>
       </div>
@@ -102,7 +107,12 @@ export const ScoreList: React.FC = () => {
       {scores.length === 0 ? (
         <div className="no-data">
           <p>データがありません</p>
-          <button onClick={() => setShowForm(true)}>最初のスコアを追加</button>
+          <button 
+            onClick={() => setShowForm(true)}
+            disabled={demoMode}
+          >
+            最初のスコアを追加
+          </button>
         </div>
       ) : (
         <div className="table-container">
@@ -172,12 +182,14 @@ export const ScoreList: React.FC = () => {
                       <button
                         className="edit-btn"
                         onClick={() => handleEdit(score)}
+                        disabled={demoMode}
                       >
                         編集
                       </button>
                       <button
                         className="delete-btn"
                         onClick={() => handleDelete(score.id)}
+                        disabled={demoMode}
                       >
                         削除
                       </button>

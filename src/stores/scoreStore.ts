@@ -1,9 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { GameScore, Statistics, CourseStatistics } from '../types';
+import { generateDemoData } from '../utils/sampleData';
 
 interface ScoreStore {
   scores: GameScore[];
+  demoMode: boolean;
   addScore: (score: Omit<GameScore, 'id'>) => void;
   updateScore: (id: string, score: Partial<GameScore>) => void;
   deleteScore: (id: string) => void;
@@ -12,6 +14,8 @@ interface ScoreStore {
   getStatistics: () => Statistics;
   getCourseStatistics: () => CourseStatistics;
   clearAll: () => void;
+  setDemoMode: (enabled: boolean) => void;
+  getScores: () => GameScore[];
 }
 
 const calculateStatistics = (scores: GameScore[]): Statistics => {
@@ -48,8 +52,12 @@ export const useScoreStore = create<ScoreStore>()(
   persist(
     (set, get) => ({
       scores: [],
+      demoMode: false,
 
       addScore: (scoreData) => {
+        // デモモード時は実データに追加しない
+        if (get().demoMode) return;
+        
         const newScore: GameScore = {
           ...scoreData,
           id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -63,6 +71,9 @@ export const useScoreStore = create<ScoreStore>()(
       },
 
       updateScore: (id, scoreData) => {
+        // デモモード時は更新しない
+        if (get().demoMode) return;
+        
         set((state) => ({
           scores: state.scores.map((score) =>
             score.id === id ? { ...score, ...scoreData } : score
@@ -71,13 +82,21 @@ export const useScoreStore = create<ScoreStore>()(
       },
 
       deleteScore: (id) => {
+        // デモモード時は削除しない
+        if (get().demoMode) return;
+        
         set((state) => ({
           scores: state.scores.filter((score) => score.id !== id),
         }));
       },
 
+      getScores: () => {
+        const state = get();
+        return state.demoMode ? generateDemoData() : state.scores;
+      },
+
       getScoresByDateRange: (startDate, endDate) => {
-        const scores = get().scores;
+        const scores = get().getScores();
         return scores.filter((score) => {
           const scoreDate = new Date(score.date);
           return scoreDate >= new Date(startDate) && scoreDate <= new Date(endDate);
@@ -85,15 +104,15 @@ export const useScoreStore = create<ScoreStore>()(
       },
 
       getScoresByCourse: (course) => {
-        return get().scores.filter((score) => score.course === course);
+        return get().getScores().filter((score) => score.course === course);
       },
 
       getStatistics: () => {
-        return calculateStatistics(get().scores);
+        return calculateStatistics(get().getScores());
       },
 
       getCourseStatistics: () => {
-        const scores = get().scores;
+        const scores = get().getScores();
         const courses = [...new Set(scores.map(score => score.course))];
         
         const courseStats: CourseStatistics = {};
@@ -107,6 +126,10 @@ export const useScoreStore = create<ScoreStore>()(
 
       clearAll: () => {
         set({ scores: [] });
+      },
+
+      setDemoMode: (enabled) => {
+        set({ demoMode: enabled });
       },
     }),
     {

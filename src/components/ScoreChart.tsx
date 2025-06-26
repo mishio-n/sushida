@@ -12,10 +12,10 @@ export const ScoreChart: React.FC<ScoreChartProps> = ({
   courseFilter,
   dateRange,
 }) => {
-  const { scores, getScoresByDateRange, getScoresByCourse } = useScoreStore();
+  const { getScores, getScoresByDateRange, getScoresByCourse } = useScoreStore();
 
   const chartData: LineChartData[] = useMemo(() => {
-    let filteredScores = scores;
+    let filteredScores = getScores();
 
     if (dateRange) {
       filteredScores = getScoresByDateRange(dateRange.start, dateRange.end);
@@ -51,7 +51,7 @@ export const ScoreChart: React.FC<ScoreChartProps> = ({
 
     return Object.values(courseData);
   }, [
-    scores,
+    getScores,
     courseFilter,
     dateRange,
     getScoresByDateRange,
