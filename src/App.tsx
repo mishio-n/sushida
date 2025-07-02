@@ -3,11 +3,12 @@ import { ScoreChart } from "./components/ScoreChart";
 import { Statistics } from "./components/Statistics";
 import { ScoreList } from "./components/ScoreList";
 import { useScoreStore } from "./stores/scoreStore";
-import { addSampleData } from "./utils/sampleData";
+import { useLoadCLIData } from "./hooks/useLoadCLIData";
 import "./App.css";
 
 function App() {
-  const { scores, addScore } = useScoreStore();
+  const { scores } = useScoreStore();
+  const { isDataLoaded } = useLoadCLIData(); // CLIデータの読み込み
   const [activeTab, setActiveTab] = useState<"chart" | "list" | "stats">(
     "chart"
   );
@@ -15,11 +16,17 @@ function App() {
 
   const courses = [...new Set(scores.map((score) => score.course))];
 
-  const handleAddSampleData = () => {
-    if (window.confirm("サンプルデータを追加しますか？")) {
-      addSampleData(addScore);
-    }
-  };
+  // データ読み込み中は読み込み画面を表示
+  if (!isDataLoaded) {
+    return (
+      <div className="app loading-screen">
+        <div className="loading-container">
+          <h2>🍣 データを読み込み中...</h2>
+          <p>CLIで生成されたスコアデータを読み込んでいます</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app">
@@ -41,11 +48,6 @@ function App() {
               ))}
             </select>
           </div>
-          {scores.length === 0 && (
-            <button className="sample-data-btn" onClick={handleAddSampleData}>
-              📊 サンプルデータを追加
-            </button>
-          )}
         </div>
       </header>
 

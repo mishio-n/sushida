@@ -20,6 +20,14 @@ export interface GameScore {
   typing: TypingDetail;
 }
 
+// CLIツールで生成されるJSONデータの型定義
+export interface CLIScoreData {
+  course: string;
+  result: number;
+  detail: ScoreDetail;
+  typing: TypingDetail;
+}
+
 // グラフ用のデータ型
 export interface ChartDataPoint {
   x: string;

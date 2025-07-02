@@ -1,12 +1,8 @@
 import React, { useState } from "react";
 import { useScoreStore } from "../stores/scoreStore";
-import { ScoreForm } from "./ScoreForm";
-import type { GameScore } from "../types";
 
 export const ScoreList: React.FC = () => {
-  const { scores, deleteScore } = useScoreStore();
-  const [editingScore, setEditingScore] = useState<GameScore | null>(null);
-  const [showForm, setShowForm] = useState(false);
+  const { scores } = useScoreStore();
   const [sortBy, setSortBy] = useState<"date" | "course" | "result">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
@@ -45,17 +41,6 @@ export const ScoreList: React.FC = () => {
     return 0;
   });
 
-  const handleEdit = (score: GameScore) => {
-    setEditingScore(score);
-    setShowForm(true);
-  };
-
-  const handleDelete = (id: string) => {
-    if (window.confirm("このスコアデータを削除しますか？")) {
-      deleteScore(id);
-    }
-  };
-
   const handleSort = (column: "date" | "course" | "result") => {
     if (sortBy === column) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -78,31 +63,18 @@ export const ScoreList: React.FC = () => {
     return total > 0 ? Math.round((correct / total) * 100 * 100) / 100 : 0;
   };
 
-  if (showForm) {
-    return (
-      <ScoreForm
-        editingScore={editingScore}
-        onClose={() => {
-          setShowForm(false);
-          setEditingScore(null);
-        }}
-      />
-    );
-  }
-
   return (
     <div className="score-list-container">
       <div className="list-header">
         <h3>スコア一覧</h3>
-        <button className="add-btn" onClick={() => setShowForm(true)}>
-          新規追加
-        </button>
       </div>
 
       {scores.length === 0 ? (
         <div className="no-data">
-          <p>データがありません</p>
-          <button onClick={() => setShowForm(true)}>最初のスコアを追加</button>
+          <p>スコアデータがありません</p>
+          <p>
+            CLIツールを使用してスクリーンショットからスコアを抽出してください
+          </p>
         </div>
       ) : (
         <div className="table-container">
@@ -111,27 +83,32 @@ export const ScoreList: React.FC = () => {
               <tr>
                 <th
                   onClick={() => handleSort("date")}
-                  className={`sortable ${sortBy === "date" ? sortOrder : ""}`}
+                  className="sortable"
+                  title="日付でソート"
                 >
                   日付
+                  {sortBy === "date" && (sortOrder === "asc" ? " ↑" : " ↓")}
                 </th>
                 <th
                   onClick={() => handleSort("course")}
-                  className={`sortable ${sortBy === "course" ? sortOrder : ""}`}
+                  className="sortable"
+                  title="コースでソート"
                 >
                   コース
+                  {sortBy === "course" && (sortOrder === "asc" ? " ↑" : " ↓")}
                 </th>
                 <th
                   onClick={() => handleSort("result")}
-                  className={`sortable ${sortBy === "result" ? sortOrder : ""}`}
+                  className="sortable"
+                  title="結果でソート"
                 >
                   結果
+                  {sortBy === "result" && (sortOrder === "asc" ? " ↑" : " ↓")}
                 </th>
                 <th>支払い/獲得</th>
                 <th>正打/誤打</th>
                 <th>正確率</th>
                 <th>平均TPS</th>
-                <th>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -139,26 +116,41 @@ export const ScoreList: React.FC = () => {
                 <tr key={score.id}>
                   <td>{formatDate(score.date)}</td>
                   <td>
-                    <span className={`course-badge course-${score.course}`}>
-                      {score.course}
-                    </span>
-                  </td>
-                  <td
-                    className={`result ${
-                      score.result > 0 ? "positive" : "negative"
-                    }`}
-                  >
-                    {formatScore(score.result)}
+                    <div className="course-info">
+                      <span className={`course-badge course-${score.course}`}>
+                        {score.course}
+                      </span>
+                      {score.id.startsWith("cli-") && (
+                        <span
+                          className="cli-badge"
+                          title="CLIツールで生成されたデータ"
+                        >
+                          🤖 OCR
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td>
-                    <div className="payment-info">
-                      <span className="payed">-{score.detail.payed}</span>
-                      <span className="gain">+{score.detail.gain}</span>
+                    <span
+                      className={`result ${
+                        score.result >= 0 ? "positive" : "negative"
+                      }`}
+                    >
+                      {formatScore(score.result)}円
+                    </span>
+                  </td>
+                  <td>
+                    <div className="detail-info">
+                      <span className="payed">
+                        支払い: {score.detail.payed}円
+                      </span>
+                      <span className="gain">獲得: {score.detail.gain}円</span>
                     </div>
                   </td>
                   <td>
                     <div className="typing-info">
                       <span className="correct">{score.typing.correct}</span>
+                      <span className="separator">/</span>
                       <span className="miss">{score.typing.miss}</span>
                     </div>
                   </td>
@@ -167,22 +159,6 @@ export const ScoreList: React.FC = () => {
                     %
                   </td>
                   <td>{score.typing.avarageTPS}</td>
-                  <td>
-                    <div className="action-buttons">
-                      <button
-                        className="edit-btn"
-                        onClick={() => handleEdit(score)}
-                      >
-                        編集
-                      </button>
-                      <button
-                        className="delete-btn"
-                        onClick={() => handleDelete(score.id)}
-                      >
-                        削除
-                      </button>
-                    </div>
-                  </td>
                 </tr>
               ))}
             </tbody>

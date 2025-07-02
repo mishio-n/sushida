@@ -496,6 +496,31 @@
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
+/* Loading screen styles */
+.loading-screen {
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.loading-container {
+  text-align: center;
+  padding: 2rem;
+}
+
+.loading-container h2 {
+  margin: 0 0 1rem 0;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.loading-container p {
+  margin: 0;
+  font-size: 1.1rem;
+  opacity: 0.9;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .app-header {
@@ -538,4 +563,20 @@
     gap: 1rem;
     align-items: stretch;
   }
+}
+
+.course-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cli-badge {
+  padding: 0.2rem 0.5rem;
+  background: #6366f1;
+  color: white;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  cursor: help;
 }

@@ -1,12 +1,14 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import type { GameScore, Statistics, CourseStatistics } from '../types';
+import type { GameScore, Statistics, CourseStatistics, CLIScoreData } from '../types';
+import { mergeScoreData } from '../utils/cliDataUtils';
 
 interface ScoreStore {
   scores: GameScore[];
+  isDataLoaded: boolean;
   addScore: (score: Omit<GameScore, 'id'>) => void;
   updateScore: (id: string, score: Partial<GameScore>) => void;
   deleteScore: (id: string) => void;
+  loadCLIData: (cliDataWithFilenames: Array<{ data: CLIScoreData; filename: string }>) => void;
   getScoresByDateRange: (startDate: string, endDate: string) => GameScore[];
   getScoresByCourse: (course: string) => GameScore[];
   getStatistics: () => Statistics;
@@ -44,73 +46,74 @@ const calculateStatistics = (scores: GameScore[]): Statistics => {
   };
 };
 
-export const useScoreStore = create<ScoreStore>()(
-  persist(
-    (set, get) => ({
-      scores: [],
+export const useScoreStore = create<ScoreStore>((set, get) => ({
+  scores: [],
+  isDataLoaded: false,
 
-      addScore: (scoreData) => {
-        const newScore: GameScore = {
-          ...scoreData,
-          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        };
-        
-        set((state) => ({
-          scores: [...state.scores, newScore].sort((a, b) => 
-            new Date(a.date).getTime() - new Date(b.date).getTime()
-          ),
-        }));
-      },
+  addScore: (scoreData) => {
+    const newScore: GameScore = {
+      ...scoreData,
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    };
+    
+    set((state) => ({
+      scores: [...state.scores, newScore].sort((a, b) => 
+        new Date(a.date).getTime() - new Date(b.date).getTime()
+      ),
+    }));
+  },
 
-      updateScore: (id, scoreData) => {
-        set((state) => ({
-          scores: state.scores.map((score) =>
-            score.id === id ? { ...score, ...scoreData } : score
-          ),
-        }));
-      },
+  loadCLIData: (cliDataWithFilenames) => {
+    set((state) => ({
+      scores: mergeScoreData(state.scores, cliDataWithFilenames),
+      isDataLoaded: true,
+    }));
+  },
 
-      deleteScore: (id) => {
-        set((state) => ({
-          scores: state.scores.filter((score) => score.id !== id),
-        }));
-      },
+  updateScore: (id, scoreData) => {
+    set((state) => ({
+      scores: state.scores.map((score) =>
+        score.id === id ? { ...score, ...scoreData } : score
+      ),
+    }));
+  },
 
-      getScoresByDateRange: (startDate, endDate) => {
-        const scores = get().scores;
-        return scores.filter((score) => {
-          const scoreDate = new Date(score.date);
-          return scoreDate >= new Date(startDate) && scoreDate <= new Date(endDate);
-        });
-      },
+  deleteScore: (id) => {
+    set((state) => ({
+      scores: state.scores.filter((score) => score.id !== id),
+    }));
+  },
 
-      getScoresByCourse: (course) => {
-        return get().scores.filter((score) => score.course === course);
-      },
+  getScoresByDateRange: (startDate, endDate) => {
+    const scores = get().scores;
+    return scores.filter((score) => {
+      const scoreDate = new Date(score.date);
+      return scoreDate >= new Date(startDate) && scoreDate <= new Date(endDate);
+    });
+  },
 
-      getStatistics: () => {
-        return calculateStatistics(get().scores);
-      },
+  getScoresByCourse: (course) => {
+    return get().scores.filter((score) => score.course === course);
+  },
 
-      getCourseStatistics: () => {
-        const scores = get().scores;
-        const courses = [...new Set(scores.map(score => score.course))];
-        
-        const courseStats: CourseStatistics = {};
-        courses.forEach(course => {
-          const courseScores = scores.filter(score => score.course === course);
-          courseStats[course] = calculateStatistics(courseScores);
-        });
-        
-        return courseStats;
-      },
+  getStatistics: () => {
+    return calculateStatistics(get().scores);
+  },
 
-      clearAll: () => {
-        set({ scores: [] });
-      },
-    }),
-    {
-      name: 'typing-game-scores',
-    }
-  )
-);
+  getCourseStatistics: () => {
+    const scores = get().scores;
+    const courses = [...new Set(scores.map(score => score.course))];
+    
+    const courseStats: CourseStatistics = {};
+    courses.forEach(course => {
+      const courseScores = scores.filter(score => score.course === course);
+      courseStats[course] = calculateStatistics(courseScores);
+    });
+    
+    return courseStats;
+  },
+
+  clearAll: () => {
+    set({ scores: [] });
+  },
+}));

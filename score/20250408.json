@@ -1,0 +1,13 @@
+{
+  "course": "お手軽",
+  "result": 800,
+  "detail": {
+    "payed": 0,
+    "gain": 800
+  },
+  "typing": {
+    "correct": 0,
+    "avarageTPS": 0.0,
+    "miss": 1
+  }
+}
