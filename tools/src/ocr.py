@@ -37,7 +37,7 @@ class SushidaOCR:
         return None
     
     def preprocess_image(self, image_path: Union[str, Path]) -> np.ndarray:
-        """寿司打画面に特化した画像前処理"""
+        """寿司打画面に特化した画像前処理（改善版）"""
         image_path = Path(image_path)
         
         if not image_path.exists():
@@ -52,10 +52,11 @@ class SushidaOCR:
             cv2.imwrite('debug_01_original.png', img)
             click.echo("🔍 デバッグ: 元画像を保存 -> debug_01_original.png")
         
-        # 1. リサイズ（OCR精度向上のため）
+        # 1. より積極的なリサイズ（OCR精度向上のため）
         height, width = img.shape[:2]
-        if width < 800:
-            scale = 800 / width
+        target_width = 1200  # より大きなサイズにリサイズ
+        if width < target_width:
+            scale = target_width / width
             new_width = int(width * scale)
             new_height = int(height * scale)
             img = cv2.resize(img, (new_width, new_height), interpolation=cv2.INTER_CUBIC)
@@ -69,27 +70,34 @@ class SushidaOCR:
         if self.debug:
             cv2.imwrite('debug_03_gray.png', gray)
         
-        # 3. ノイズ除去
-        denoised = cv2.medianBlur(gray, 3)
+        # 3. より強力なノイズ除去
+        denoised = cv2.bilateralFilter(gray, 9, 75, 75)
         
-        # 4. コントラスト強化
-        enhanced = cv2.equalizeHist(denoised)
+        # 4. ガンマ補正でコントラストを改善
+        gamma = 1.2
+        inv_gamma = 1.0 / gamma
+        table = np.array([((i / 255.0) ** inv_gamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
+        enhanced = cv2.LUT(denoised, table)
         
         if self.debug:
             cv2.imwrite('debug_04_enhanced.png', enhanced)
         
-        # 5. 適応的二値化
+        # 5. シャープニング（文字の境界を強調）
+        kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
+        sharpened = cv2.filter2D(enhanced, -1, kernel)
+        
+        # 6. 適応的二値化（パラメータ調整）
         binary = cv2.adaptiveThreshold(
-            enhanced, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-            cv2.THRESH_BINARY, 15, 8
+            sharpened, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+            cv2.THRESH_BINARY, 11, 2
         )
         
-        # 6. モルフォロジー処理（文字を太くして読みやすく）
-        kernel = np.ones((2, 2), np.uint8)
+        # 7. モルフォロジー処理（改善）
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
         processed = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
         
-        # 7. 輪郭の強化
-        kernel2 = np.ones((1, 1), np.uint8)
+        # 8. 文字の太さを適度に調整
+        kernel2 = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 1))
         processed = cv2.dilate(processed, kernel2, iterations=1)
         
         if self.debug:
@@ -99,23 +107,45 @@ class SushidaOCR:
         return processed
     
     def extract_text(self, image_path: Union[str, Path]) -> str:
-        """OCRでテキスト抽出"""
+        """OCRでテキスト抽出（改善版）"""
         try:
             processed_img = self.preprocess_image(image_path)
             
-            # 寿司打特化のTesseract設定
+            # より精密なTesseract設定
             custom_config = r'''
-                --oem 3 
+                --oem 1 
                 --psm 6 
                 -l jpn
-                -c tessedit_char_whitelist=0123456789お手軽普通高級円コースゲット払って損でした正しく打ったキーの数平均ミスタイプ回秒/×、。・
+                -c tessedit_char_whitelist=0123456789お手軽普通高級円コースゲット払って損でした正しく打ったキーの数平均ミスタイプ回秒/×、。・-+,
+                -c tessedit_char_blacklist=|Il
+                -c load_system_dawg=0
+                -c load_freq_dawg=0
             '''.strip()
             
-            # OCR実行
-            text = pytesseract.image_to_string(processed_img, config=custom_config)
+            # 複数回OCRを実行して最も確実な結果を取得
+            results = []
+            
+            # 1回目: 標準設定
+            text1 = pytesseract.image_to_string(processed_img, config=custom_config)
+            results.append(text1)
+            
+            # 2回目: より保守的な設定
+            conservative_config = r'''
+                --oem 1
+                --psm 8
+                -l jpn
+                -c tessedit_char_whitelist=0123456789お手軽普通高級円コースゲット払って損でした正しく打ったキーの数平均ミスタイプ回秒/×、。・-+,
+            '''.strip()
+            text2 = pytesseract.image_to_string(processed_img, config=conservative_config)
+            results.append(text2)
+            
+            # 最も長いテキストを選択（通常はより多くの情報を含む）
+            text = max(results, key=len)
             
             if self.debug:
-                click.echo(f"🔍 抽出されたテキスト:\n{text}")
+                click.echo(f"🔍 抽出されたテキスト (設定1):\n{text1}")
+                click.echo(f"🔍 抽出されたテキスト (設定2):\n{text2}")
+                click.echo(f"🔍 選択されたテキスト:\n{text}")
                 click.echo("-" * 50)
             
             return text.strip()

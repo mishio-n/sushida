@@ -61,7 +61,7 @@ def analyze(image_path: Path, output: Optional[Path], output_format: str, debug:
         if not quiet:
             click.echo("📊 データをパース中...")
         
-        parser = SushidaResultParser()
+        parser = SushidaResultParser(debug=debug)
         result = parser.parse(text)
         
         if not result:
